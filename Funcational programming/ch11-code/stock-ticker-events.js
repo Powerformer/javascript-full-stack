@@ -1,34 +1,49 @@
+var server = connectToServer();
 
-// data format: { id: "AAPL", price: 121.7, change: 0.01 }
+var formatDecimal = unboundMethod( "toFixed" )( 2 );
+var formatPrice = pipe( formatDecimal, formatCurrency );
+var formatChange = pipe( formatDecimal, formatSign );
+var processNewStock = pipe( addStockName, formatStockNumbers );
+var observableMapperFns = [ processNewStock, formatStockNumbers ];
+var makeObservableFromEvent = curry( Rx.Observable.fromEvent, 2 )( server );
+var mapObservable = uncurry( map );
+
+var stockEventNames = [ "stock", "stock-update" ];
+
+var [ newStocks, stockUpdates ] = pipe(
+	map( makeObservableFromEvent ),
+	curry( zip )( observableMapperFns ),
+	map( spreadArgs( mapObservable ) )
+)
+( stockEventNames );
+
+
+// *********************
 
 function addStockName(stock) {
-  return setProp('name', stock, stock.id);
-}
-
-function formatSign(val) {
-  if (Number(val) > 0) {
-    return `+${val}`;
-  }
-
-  return val;
-}
-
-function formatCurrency(val) {
-  return `$${val}`;
-}
-
-function transformObservable(mapperFn, obsv) {
-  // side effect
-  return obsv.map(mapperFn);
+	return setProp( "name", stock, stock.id );
 }
 
 function formatStockNumbers(stock) {
-  var updateTuples = [
-    ['price', formatPrice(stock.price)],
-    ['change', formatChange(stock.change)]
-  ];
+	var stockDataUpdates = [
+		[ "price", formatPrice( stock.price ) ],
+		[ "change", formatChange( stock.change ) ]
+	];
 
-  return reduce(function formatter(stock, [propName, val]) {
-    return setProp(propName, stock, val) ;
-  })(stock)(updateTuples);
+	return reduce( function formatter(stock,[propName,val]){
+		return setProp( propName, stock, val );
+	} )
+	( stock )
+	( stockDataUpdates );
+}
+
+function formatSign(val) {
+	if (Number(val) > 0) {
+		return `+${val}`;
+	}
+	return val;
+}
+
+function formatCurrency(val) {
+	return `$${val}`;
 }
