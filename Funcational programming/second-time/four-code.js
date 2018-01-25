@@ -45,3 +45,33 @@ function compose(...fns) {
 
   return compose(...rest.reverse(), composedFn);
 }
+
+// pipe 
+function pipe(...fns) {
+  return function piped(result) {
+    var list = fns.slice();
+
+    while (list.length > 0) {
+      result = list.shift()(result);
+    }
+
+    return result;
+  };
+}
+
+// or
+var pipe = reverseArgs(compose);
+
+function prop(name, obj) {
+  return obj[name];
+}
+
+function setProp(name, obj, val) {
+  var o = Object.assign({}, obj);
+  o[name] = val;
+  return o;
+}
+
+function makeObjProp(name, value) {
+  return setProp(name, {}, value);
+}
